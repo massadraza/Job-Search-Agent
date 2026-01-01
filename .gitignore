@@ -1,0 +1,39 @@
+# Environment variables
+.env
+.env.local
+
+# n8n
+.n8n/
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Personal data
+config/resume.json
+config/search-criteria.json
+
+# Keep example configs
+!config/resume.json.example
+!config/search-criteria.json.example
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp

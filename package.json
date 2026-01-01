@@ -1,0 +1,28 @@
+{
+  "name": "job-search-ai-agent",
+  "version": "1.0.0",
+  "description": "AI-powered job search automation with n8n workflows",
+  "main": "scripts/job-matcher.js",
+  "scripts": {
+    "test": "node scripts/job-matcher.js",
+    "start": "n8n start",
+    "n8n": "n8n"
+  },
+  "keywords": [
+    "job-search",
+    "automation",
+    "n8n",
+    "ai",
+    "claude",
+    "workflow"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "n8n": "^1.20.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

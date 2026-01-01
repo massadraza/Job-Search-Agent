@@ -1,0 +1,377 @@
+{
+  "name": "Job Search AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "scheduler",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Load search criteria from workflow static data\nconst criteria = $input.first().json.searchCriteria || {\n  keywords: ['software engineer', 'developer', 'full stack'],\n  locations: ['remote', 'new york', 'san francisco'],\n  jobTypes: ['full-time'],\n  experienceLevel: ['mid', 'senior']\n};\n\n// Generate search URLs for different job boards\nconst searches = [];\n\n// LinkedIn Jobs\ncriteria.keywords.forEach(keyword => {\n  criteria.locations.forEach(location => {\n    searches.push({\n      platform: 'LinkedIn',\n      keyword: keyword,\n      location: location,\n      url: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`\n    });\n  });\n});\n\n// Indeed Jobs\ncriteria.keywords.forEach(keyword => {\n  criteria.locations.forEach(location => {\n    searches.push({\n      platform: 'Indeed',\n      keyword: keyword,\n      location: location,\n      url: `https://www.indeed.com/jobs?q=${encodeURIComponent(keyword)}&l=${encodeURIComponent(location)}`\n    });\n  });\n});\n\nreturn searches.map(search => ({ json: search }));"
+      },
+      "id": "generate-searches",
+      "name": "Generate Search URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch-jobs",
+      "name": "Fetch Job Listings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse HTML and extract job data\n// This is a simplified example - in production, use proper HTML parsing\nconst html = $input.first().json.data || '';\nconst platform = $input.first().json.platform;\n\n// Extract job listings (this is pseudo-code, actual implementation depends on site structure)\nconst jobs = [];\n\n// For demonstration, create sample job data structure\n// In real implementation, parse the HTML to extract:\n// - Job title\n// - Company name\n// - Location\n// - Description\n// - Posted date\n// - Apply URL\n\n// Sample structure:\nconst sampleJob = {\n  title: 'Software Engineer',\n  company: 'Tech Company',\n  location: 'Remote',\n  description: 'We are looking for a talented software engineer...',\n  url: 'https://example.com/job/123',\n  platform: platform,\n  postedDate: new Date().toISOString(),\n  salary: '$100k - $150k'\n};\n\njobs.push(sampleJob);\n\nreturn jobs.map(job => ({ json: job }));"
+      },
+      "id": "parse-jobs",
+      "name": "Parse Job Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "messages": {
+          "values": [
+            {
+              "message": "=You are a job matching assistant. Analyze the following job posting and determine if it's a good match for the candidate.\n\nCandidate Profile:\n{{ $json.candidateProfile }}\n\nJob Posting:\nTitle: {{ $json.title }}\nCompany: {{ $json.company }}\nLocation: {{ $json.location }}\nDescription: {{ $json.description }}\n\nProvide a response in JSON format with:\n1. matchScore (0-100): Overall match percentage\n2. reasoning: Brief explanation of the score\n3. pros: Array of positive aspects\n4. cons: Array of concerns or gaps\n5. recommendation: 'apply', 'maybe', or 'skip'\n\nRespond only with valid JSON."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "ai-analysis",
+      "name": "AI Job Analysis",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1",
+          "name": "Anthropic Claude API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse AI response and add scoring\nconst aiResponse = $input.first().json.response;\nlet analysis;\n\ntry {\n  analysis = JSON.parse(aiResponse);\n} catch (e) {\n  // Fallback if AI doesn't return valid JSON\n  analysis = {\n    matchScore: 50,\n    reasoning: 'Unable to parse AI response',\n    pros: [],\n    cons: [],\n    recommendation: 'maybe'\n  };\n}\n\n// Combine job data with AI analysis\nconst result = {\n  ...($input.first().json),\n  analysis: analysis,\n  matchScore: analysis.matchScore,\n  recommendation: analysis.recommendation\n};\n\nreturn { json: result };"
+      },
+      "id": "process-analysis",
+      "name": "Process AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.matchScore }}",
+              "operation": "largerEqual",
+              "value2": 70
+            }
+          ]
+        }
+      },
+      "id": "filter-matches",
+      "name": "Filter High Matches",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ new Date().toISOString() }}",
+        "format": "yyyy-MM-dd",
+        "options": {}
+      },
+      "id": "get-date",
+      "name": "Get Current Date",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Aggregate all matched jobs into a digest\nconst jobs = $input.all().map(item => item.json);\n\n// Sort by match score\njobs.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));\n\n// Create email-friendly digest\nconst digest = {\n  date: new Date().toLocaleDateString(),\n  totalMatches: jobs.length,\n  jobs: jobs,\n  summary: `Found ${jobs.length} high-quality job matches today!`\n};\n\nreturn { json: digest };"
+      },
+      "id": "create-digest",
+      "name": "Create Job Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format digest as HTML email\nconst digest = $input.first().json;\nconst jobs = digest.jobs || [];\n\nlet html = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }\n    .header { background: #0066cc; color: white; padding: 20px; border-radius: 8px; }\n    .job-card { border: 1px solid #ddd; margin: 20px 0; padding: 20px; border-radius: 8px; }\n    .match-score { font-size: 24px; font-weight: bold; color: #0066cc; }\n    .high-score { color: #00aa00; }\n    .recommendation { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; }\n    .apply { background: #00aa00; color: white; }\n    .maybe { background: #ffaa00; color: white; }\n    .pros { color: #00aa00; }\n    .cons { color: #cc0000; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>Job Search Digest - ${digest.date}</h1>\n    <p>${digest.summary}</p>\n  </div>\n`;\n\njobs.forEach((job, index) => {\n  const scoreClass = job.matchScore >= 85 ? 'high-score' : '';\n  const recClass = job.recommendation === 'apply' ? 'apply' : 'maybe';\n  \n  html += `\n  <div class=\"job-card\">\n    <h2>${index + 1}. ${job.title}</h2>\n    <p><strong>Company:</strong> ${job.company} | <strong>Location:</strong> ${job.location}</p>\n    <p><span class=\"match-score ${scoreClass}\">${job.matchScore}% Match</span> | \n       <span class=\"recommendation ${recClass}\">${job.recommendation.toUpperCase()}</span></p>\n    \n    ${job.analysis ? `\n    <p><strong>Analysis:</strong> ${job.analysis.reasoning}</p>\n    \n    ${job.analysis.pros && job.analysis.pros.length > 0 ? `\n    <p class=\"pros\"><strong>Pros:</strong></p>\n    <ul class=\"pros\">\n      ${job.analysis.pros.map(pro => `<li>${pro}</li>`).join('')}\n    </ul>\n    ` : ''}\n    \n    ${job.analysis.cons && job.analysis.cons.length > 0 ? `\n    <p class=\"cons\"><strong>Considerations:</strong></p>\n    <ul class=\"cons\">\n      ${job.analysis.cons.map(con => `<li>${con}</li>`).join('')}\n    </ul>\n    ` : ''}\n    ` : ''}\n    \n    <p><a href=\"${job.url}\" style=\"color: #0066cc; font-weight: bold;\">View Job Posting →</a></p>\n  </div>\n  `;\n});\n\nhtml += `\n</body>\n</html>\n`;\n\nreturn {\n  json: {\n    subject: `Job Search Digest - ${digest.totalMatches} Matches - ${digest.date}`,\n    html: html,\n    text: `Found ${digest.totalMatches} job matches. View the HTML email for details.`\n  }\n};"
+      },
+      "id": "format-email",
+      "name": "Format Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "jobsearch@yourdomain.com",
+        "toEmail": "your-email@example.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2050,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "2",
+          "name": "SMTP Account"
+        }
+      },
+      "notes": "Configure your email credentials in n8n settings"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.date }}",
+            "Title": "={{ $json.title }}",
+            "Company": "={{ $json.company }}",
+            "Location": "={{ $json.location }}",
+            "Match Score": "={{ $json.matchScore }}",
+            "Recommendation": "={{ $json.recommendation }}",
+            "URL": "={{ $json.url }}",
+            "Platform": "={{ $json.platform }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "save-to-sheet",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1650,
+        450
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "3",
+          "name": "Google Sheets OAuth2"
+        }
+      },
+      "notes": "Optional: Track all job matches in a spreadsheet"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generate Search URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Search URLs": {
+      "main": [
+        [
+          {
+            "node": "Fetch Job Listings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Job Listings": {
+      "main": [
+        [
+          {
+            "node": "Parse Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Job Data": {
+      "main": [
+        [
+          {
+            "node": "AI Job Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Job Analysis": {
+      "main": [
+        [
+          {
+            "node": "Process AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process AI Response": {
+      "main": [
+        [
+          {
+            "node": "Filter High Matches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter High Matches": {
+      "main": [
+        [
+          {
+            "node": "Create Job Digest",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Job Digest": {
+      "main": [
+        [
+          {
+            "node": "Format Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "searchCriteria": {
+      "keywords": [
+        "software engineer",
+        "full stack developer",
+        "backend engineer"
+      ],
+      "locations": [
+        "remote",
+        "new york",
+        "san francisco"
+      ],
+      "jobTypes": [
+        "full-time"
+      ],
+      "experienceLevel": [
+        "mid",
+        "senior"
+      ]
+    }
+  },
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-12-31T00:00:00.000Z",
+  "versionId": "1"
+}

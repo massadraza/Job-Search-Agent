@@ -12,107 +12,98 @@
           ]
         }
       },
-      "id": "57498559-d815-4933-8577-234fc194b631",
+      "id": "scheduler",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1,
       "position": [
-        -1424,
-        112
-      ],
-      "disabled": true
+        250,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Optimized search - 2-3 queries total\nconst searches = [\n  {\n    platform: 'JSearch',\n    keyword: 'software engineering intern summer 2025',\n    location: 'remote',\n    query: 'software engineering intern summer 2025 remote'\n  },\n  {\n    platform: 'JSearch',\n    keyword: 'software engineering intern',\n    location: 'New York',\n    query: 'software engineering intern New York'\n  },\n  {\n    platform: 'JSearch',\n    keyword: 'computer science intern',\n    location: 'United States',\n    query: 'computer science intern United States'\n  }\n];\n\nreturn searches.map(search => ({ json: search }));"
+        "functionCode": "// Load search criteria from workflow static data\nconst criteria = $input.first().json.searchCriteria || {\n  keywords: ['software engineer', 'developer', 'full stack'],\n  locations: ['remote', 'new york', 'san francisco'],\n  jobTypes: ['full-time'],\n  experienceLevel: ['mid', 'senior']\n};\n\n// Generate search URLs for different job boards\nconst searches = [];\n\n// LinkedIn Jobs\ncriteria.keywords.forEach(keyword => {\n  criteria.locations.forEach(location => {\n    searches.push({\n      platform: 'LinkedIn',\n      keyword: keyword,\n      location: location,\n      url: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`\n    });\n  });\n});\n\n// Indeed Jobs\ncriteria.keywords.forEach(keyword => {\n  criteria.locations.forEach(location => {\n    searches.push({\n      platform: 'Indeed',\n      keyword: keyword,\n      location: location,\n      url: `https://www.indeed.com/jobs?q=${encodeURIComponent(keyword)}&l=${encodeURIComponent(location)}`\n    });\n  });\n});\n\nreturn searches.map(search => ({ json: search }));"
       },
-      "id": "a6e94e63-e480-4e35-ab31-6e563643f335",
+      "id": "generate-searches",
       "name": "Generate Search URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1216,
-        112
+        450,
+        300
       ]
     },
     {
       "parameters": {
-        "url": "https://jsearch.p.rapidapi.com/search",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "query",
-              "value": "={{ $json.keyword }} {{ $json.location }}"
-            },
-            {
-              "name": "page",
-              "value": "1"
-            },
-            {
-              "name": "num_pages",
-              "value": "1"
-            },
-            {
-              "name": "employment_types",
-              "value": "INTERN"
-            },
-            {
-              "name": "date_posted",
-              "value": "month"
-            }
-          ]
-        },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-RapidAPI-Key",
-              "value": "73bf5d93eamsha7a6d3bb8ba6ac9p186822jsn399ac8de17f7"
-            },
-            {
-              "name": "X-RapidAPI-Host",
-              "value": "jsearch.p.rapidapi.com"
-            }
-          ]
-        },
+        "url": "={{ $json.url }}",
         "options": {
           "timeout": 10000
         }
       },
-      "id": "ff103ab5-f68b-45c9-82b4-62047e7274d5",
+      "id": "fetch-jobs",
       "name": "Fetch Job Listings",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1024,
-        112
+        650,
+        300
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Parse JSearch API response\nconst response = $input.first().json;\n\n// JSearch returns data in response.data array\nconst jobs = response.data || [];\n\n// If no jobs found, return empty array\nif (jobs.length === 0) {\n  return [];\n}\n\n// Map JSearch data to our format\nreturn jobs.map(job => ({\n  json: {\n    title: job.job_title || 'No title',\n    company: job.employer_name || 'Unknown company',\n    location: job.job_city && job.job_state \n      ? `${job.job_city}, ${job.job_state}` \n      : (job.job_country || 'Remote'),\n    description: job.job_description || 'No description available',\n    url: job.job_apply_link || job.job_google_link || '#',\n    platform: job.job_publisher || 'JSearch',\n    postedDate: job.job_posted_at_datetime_utc || new Date().toISOString(),\n    salary: job.job_min_salary || job.job_max_salary\n      ? `$${job.job_min_salary || '?'} - $${job.job_max_salary || '?'}` \n      : 'Not specified',\n    requiredSkills: job.job_required_skills || [],\n    jobType: job.job_employment_type || 'Not specified',\n    isRemote: job.job_is_remote || false,\n    experienceLevel: job.job_required_experience?.required_experience_in_months \n      ? `${job.job_required_experience.required_experience_in_months} months` \n      : 'Entry level'\n  }\n}));\n"
+        "functionCode": "// Parse HTML and extract job data\n// This is a simplified example - in production, use proper HTML parsing\nconst html = $input.first().json.data || '';\nconst platform = $input.first().json.platform;\n\n// Extract job listings (this is pseudo-code, actual implementation depends on site structure)\nconst jobs = [];\n\n// For demonstration, create sample job data structure\n// In real implementation, parse the HTML to extract:\n// - Job title\n// - Company name\n// - Location\n// - Description\n// - Posted date\n// - Apply URL\n\n// Sample structure:\nconst sampleJob = {\n  title: 'Software Engineer',\n  company: 'Tech Company',\n  location: 'Remote',\n  description: 'We are looking for a talented software engineer...',\n  url: 'https://example.com/job/123',\n  platform: platform,\n  postedDate: new Date().toISOString(),\n  salary: '$100k - $150k'\n};\n\njobs.push(sampleJob);\n\nreturn jobs.map(job => ({ json: job }));"
       },
-      "id": "d320576f-e2f7-4063-ab78-5b4ed1212a6f",
+      "id": "parse-jobs",
       "name": "Parse Job Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -816,
-        112
+        850,
+        300
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Mock AI response - simplified\nconst jobData = $input.first().json;\n\n// Generate mock AI analysis\nconst scores = [72, 78, 81, 85, 88, 92];\nconst randomScore = scores[Math.floor(Math.random() * scores.length)];\n\nconst analysis = {\n  matchScore: randomScore,\n  reasoning: `Strong match for freshman CS student`,\n  pros: ['Good technical fit', 'Learning opportunity', 'Entry-level friendly'],\n  cons: ['Competitive', 'Limited spots'],\n  recommendation: randomScore >= 80 ? 'apply' : 'maybe'\n};\n\n// Just pass through ALL the data from Parse Job Data\nreturn {\n  json: {\n    ...jobData,  // Spread all fields from input\n    date: new Date().toLocaleDateString(),\n    matchScore: randomScore,\n    recommendation: analysis.recommendation,\n    analysis: analysis\n  }\n};\n"
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "messages": {
+          "values": [
+            {
+              "message": "=You are a job matching assistant. Analyze the following job posting and determine if it's a good match for the candidate.\n\nCandidate Profile:\n{{ $json.candidateProfile }}\n\nJob Posting:\nTitle: {{ $json.title }}\nCompany: {{ $json.company }}\nLocation: {{ $json.location }}\nDescription: {{ $json.description }}\n\nProvide a response in JSON format with:\n1. matchScore (0-100): Overall match percentage\n2. reasoning: Brief explanation of the score\n3. pros: Array of positive aspects\n4. cons: Array of concerns or gaps\n5. recommendation: 'apply', 'maybe', or 'skip'\n\nRespond only with valid JSON."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3
+        }
       },
-      "id": "bea50b92-dc4c-4549-a8d7-d290c3cef5fb",
+      "id": "ai-analysis",
+      "name": "AI Job Analysis",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1",
+          "name": "Anthropic Claude API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse AI response and add scoring\nconst aiResponse = $input.first().json.response;\nlet analysis;\n\ntry {\n  analysis = JSON.parse(aiResponse);\n} catch (e) {\n  // Fallback if AI doesn't return valid JSON\n  analysis = {\n    matchScore: 50,\n    reasoning: 'Unable to parse AI response',\n    pros: [],\n    cons: [],\n    recommendation: 'maybe'\n  };\n}\n\n// Combine job data with AI analysis\nconst result = {\n  ...($input.first().json),\n  analysis: analysis,\n  matchScore: analysis.matchScore,\n  recommendation: analysis.recommendation\n};\n\nreturn { json: result };"
+      },
+      "id": "process-analysis",
       "name": "Process AI Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -608,
-        112
+        1250,
+        300
       ]
     },
     {
@@ -125,16 +116,15 @@
               "value2": 70
             }
           ]
-        },
-        "options": {}
+        }
       },
-      "id": "1e2b865e-4644-4734-b72a-9177a9c636ab",
+      "id": "filter-matches",
       "name": "Filter High Matches",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -432,
-        112
+        1450,
+        300
       ]
     },
     {
@@ -144,63 +134,62 @@
         "format": "yyyy-MM-dd",
         "options": {}
       },
-      "id": "56fef7a0-4ab7-418d-9f91-03232cc2d3f9",
+      "id": "get-date",
       "name": "Get Current Date",
       "type": "n8n-nodes-base.dateTime",
       "typeVersion": 2,
       "position": [
-        0,
-        -80
+        1650,
+        200
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Aggregate all matched jobs into a digest\nconst jobs = $input.all().map(item => item.json);\n\n// Sort by match score\njobs.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));\n\n// Create email-friendly digest\nconst digest = {\n  date: new Date().toLocaleDateString(),\n  totalMatches: jobs.length,\n  jobs: jobs,\n  summary: `Found ${jobs.length} high-quality job matches today!`\n};\n\nreturn { json: digest };\n"
+        "functionCode": "// Aggregate all matched jobs into a digest\nconst jobs = $input.all().map(item => item.json);\n\n// Sort by match score\njobs.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));\n\n// Create email-friendly digest\nconst digest = {\n  date: new Date().toLocaleDateString(),\n  totalMatches: jobs.length,\n  jobs: jobs,\n  summary: `Found ${jobs.length} high-quality job matches today!`\n};\n\nreturn { json: digest };"
       },
-      "id": "03ae577e-8efd-4bdd-955b-e95bee9fc04a",
+      "id": "create-digest",
       "name": "Create Job Digest",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        0,
-        112
+        1650,
+        300
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Format digest as HTML email\nconst digest = $input.first().json;\nconst jobs = digest.jobs || [];\n\nlet html = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }\n    .header { background: #0066cc; color: white; padding: 20px; border-radius: 8px; }\n    .job-card { border: 1px solid #ddd; margin: 20px 0; padding: 20px; border-radius: 8px; }\n    .match-score { font-size: 24px; font-weight: bold; color: #0066cc; }\n    .high-score { color: #00aa00; }\n    .recommendation { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; }\n    .apply { background: #00aa00; color: white; }\n    .maybe { background: #ffaa00; color: white; }\n    .pros { color: #00aa00; }\n    .cons { color: #cc0000; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>Job Search Digest - ${digest.date}</h1>\n    <p>${digest.summary}</p>\n  </div>\n`;\n\njobs.forEach((job, index) => {\n  const scoreClass = job.matchScore >= 85 ? 'high-score' : '';\n  const recClass = job.recommendation === 'apply' ? 'apply' : 'maybe';\n  \n  html += `\n  <div class=\"job-card\">\n    <h2>${index + 1}. ${job.title}</h2>\n    <p><strong>Company:</strong> ${job.company} | <strong>Location:</strong> ${job.location}</p>\n    <p><span class=\"match-score ${scoreClass}\">${job.matchScore}% Match</span> | \n       <span class=\"recommendation ${recClass}\">${job.recommendation.toUpperCase()}</span></p>\n    \n    ${job.analysis ? `\n    <p><strong>Analysis:</strong> ${job.analysis.reasoning}</p>\n    \n    ${job.analysis.pros && job.analysis.pros.length > 0 ? `\n    <p class=\"pros\"><strong>Pros:</strong></p>\n    <ul class=\"pros\">\n      ${job.analysis.pros.map(pro => `<li>${pro}</li>`).join('')}\n    </ul>\n    ` : ''}\n    \n    ${job.analysis.cons && job.analysis.cons.length > 0 ? `\n    <p class=\"cons\"><strong>Considerations:</strong></p>\n    <ul class=\"cons\">\n      ${job.analysis.cons.map(con => `<li>${con}</li>`).join('')}\n    </ul>\n    ` : ''}\n    ` : ''}\n    \n    <p><a href=\"${job.url}\" style=\"color: #0066cc; font-weight: bold;\">View Job Posting →</a></p>\n  </div>\n  `;\n});\n\nhtml += `\n</body>\n</html>\n`;\n\nreturn {\n  json: {\n    subject: `Job Search Digest - ${digest.totalMatches} Matches - ${digest.date}`,\n    html: html,\n    text: `Found ${digest.totalMatches} job matches. View the HTML email for details.`\n  }\n};\n"
+        "functionCode": "// Format digest as HTML email\nconst digest = $input.first().json;\nconst jobs = digest.jobs || [];\n\nlet html = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }\n    .header { background: #0066cc; color: white; padding: 20px; border-radius: 8px; }\n    .job-card { border: 1px solid #ddd; margin: 20px 0; padding: 20px; border-radius: 8px; }\n    .match-score { font-size: 24px; font-weight: bold; color: #0066cc; }\n    .high-score { color: #00aa00; }\n    .recommendation { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; }\n    .apply { background: #00aa00; color: white; }\n    .maybe { background: #ffaa00; color: white; }\n    .pros { color: #00aa00; }\n    .cons { color: #cc0000; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>Job Search Digest - ${digest.date}</h1>\n    <p>${digest.summary}</p>\n  </div>\n`;\n\njobs.forEach((job, index) => {\n  const scoreClass = job.matchScore >= 85 ? 'high-score' : '';\n  const recClass = job.recommendation === 'apply' ? 'apply' : 'maybe';\n  \n  html += `\n  <div class=\"job-card\">\n    <h2>${index + 1}. ${job.title}</h2>\n    <p><strong>Company:</strong> ${job.company} | <strong>Location:</strong> ${job.location}</p>\n    <p><span class=\"match-score ${scoreClass}\">${job.matchScore}% Match</span> | \n       <span class=\"recommendation ${recClass}\">${job.recommendation.toUpperCase()}</span></p>\n    \n    ${job.analysis ? `\n    <p><strong>Analysis:</strong> ${job.analysis.reasoning}</p>\n    \n    ${job.analysis.pros && job.analysis.pros.length > 0 ? `\n    <p class=\"pros\"><strong>Pros:</strong></p>\n    <ul class=\"pros\">\n      ${job.analysis.pros.map(pro => `<li>${pro}</li>`).join('')}\n    </ul>\n    ` : ''}\n    \n    ${job.analysis.cons && job.analysis.cons.length > 0 ? `\n    <p class=\"cons\"><strong>Considerations:</strong></p>\n    <ul class=\"cons\">\n      ${job.analysis.cons.map(con => `<li>${con}</li>`).join('')}\n    </ul>\n    ` : ''}\n    ` : ''}\n    \n    <p><a href=\"${job.url}\" style=\"color: #0066cc; font-weight: bold;\">View Job Posting →</a></p>\n  </div>\n  `;\n});\n\nhtml += `\n</body>\n</html>\n`;\n\nreturn {\n  json: {\n    subject: `Job Search Digest - ${digest.totalMatches} Matches - ${digest.date}`,\n    html: html,\n    text: `Found ${digest.totalMatches} job matches. View the HTML email for details.`\n  }\n};"
       },
-      "id": "2c2d0ae4-a3e5-4678-bd9d-1b77fffef119",
+      "id": "format-email",
       "name": "Format Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        208,
-        112
+        1850,
+        300
       ]
     },
     {
       "parameters": {
-        "fromEmail": "massadraza2007@gmail.com",
-        "toEmail": "massad.raza@outlook.com",
+        "fromEmail": "jobsearch@yourdomain.com",
+        "toEmail": "your-email@example.com",
         "subject": "={{ $json.subject }}",
-        "emailFormat": "html",
-        "html": "={{ $json.html }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
         "options": {}
       },
-      "id": "66169469-89c9-4c96-bffd-f63e4477913e",
+      "id": "send-email",
       "name": "Send Email Notification",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
       "position": [
-        400,
-        112
+        2050,
+        300
       ],
-      "webhookId": "b4229ed2-579b-435e-a554-098dc3d1afe6",
       "credentials": {
         "smtp": {
-          "id": "PyLz96WlNTS6fKg9",
-          "name": "SMTP account"
+          "id": "2",
+          "name": "SMTP Account"
         }
       },
       "notes": "Configure your email credentials in n8n settings"
@@ -210,292 +199,46 @@
         "operation": "appendOrUpdate",
         "documentId": {
           "__rl": true,
-          "value": "1-tmCYC28MRlpzx6nnCNTMVs58MBF0EHVJ5kg1-ITEjM",
-          "mode": "list",
-          "cachedResultName": "Job Search Agent Spreadsheet",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-tmCYC28MRlpzx6nnCNTMVs58MBF0EHVJ5kg1-ITEjM/edit?usp=drivesdk"
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
         },
         "sheetName": {
           "__rl": true,
-          "value": "gid=0",
-          "mode": "list",
-          "cachedResultName": "Sheet1",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-tmCYC28MRlpzx6nnCNTMVs58MBF0EHVJ5kg1-ITEjM/edit#gid=0"
+          "value": "Sheet1",
+          "mode": "list"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Title": "={{ $json.title}}",
-            "Date": "={{ $json.date }}\n",
+            "Date": "={{ $json.date }}",
+            "Title": "={{ $json.title }}",
             "Company": "={{ $json.company }}",
             "Location": "={{ $json.location }}",
             "Match Score": "={{ $json.matchScore }}",
             "Recommendation": "={{ $json.recommendation }}",
             "URL": "={{ $json.url }}",
             "Platform": "={{ $json.platform }}"
-          },
-          "matchingColumns": [
-            "Title"
-          ],
-          "schema": [
-            {
-              "id": "Date",
-              "displayName": "Date",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Title",
-              "displayName": "Title",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "Company",
-              "displayName": "Company",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Location",
-              "displayName": "Location",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "Match Score",
-              "displayName": "Match Score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Recommendation",
-              "displayName": "Recommendation",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "URL",
-              "displayName": "URL",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Platform",
-              "displayName": "Platform",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "title",
-              "displayName": "title",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "company",
-              "displayName": "company",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "location",
-              "displayName": "location",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "description",
-              "displayName": "description",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "url",
-              "displayName": "url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "platform",
-              "displayName": "platform",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "postedDate",
-              "displayName": "postedDate",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "salary",
-              "displayName": "salary",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "requiredSkills",
-              "displayName": "requiredSkills",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "jobType",
-              "displayName": "jobType",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "isRemote",
-              "displayName": "isRemote",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "experienceLevel",
-              "displayName": "experienceLevel",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "date",
-              "displayName": "date",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "matchScore",
-              "displayName": "matchScore",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "recommendation",
-              "displayName": "recommendation",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "analysis",
-              "displayName": "analysis",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
+          }
         },
         "options": {}
       },
-      "id": "815e7e7a-7c4c-46cd-9b63-fb225d50833d",
+      "id": "save-to-sheet",
       "name": "Save to Google Sheets",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
       "position": [
-        0,
-        256
+        1650,
+        450
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "l0z85Zk08R2Ro5hp",
-          "name": "Google Sheets account"
+          "id": "3",
+          "name": "Google Sheets OAuth2"
         }
       },
       "notes": "Optional: Track all job matches in a spreadsheet"
     }
   ],
-  "pinData": {},
   "connections": {
     "Schedule Trigger": {
       "main": [
@@ -524,6 +267,28 @@
         [
           {
             "node": "Parse Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Job Data": {
+      "main": [
+        [
+          {
+            "node": "AI Job Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Job Analysis": {
+      "main": [
+        [
+          {
+            "node": "Process AI Response",
             "type": "main",
             "index": 0
           }
@@ -578,29 +343,35 @@
           }
         ]
       ]
-    },
-    "Parse Job Data": {
-      "main": [
-        [
-          {
-            "node": "Process AI Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "searchCriteria": {
+      "keywords": [
+        "software engineer",
+        "full stack developer",
+        "backend engineer"
+      ],
+      "locations": [
+        "remote",
+        "new york",
+        "san francisco"
+      ],
+      "jobTypes": [
+        "full-time"
+      ],
+      "experienceLevel": [
+        "mid",
+        "senior"
       ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "availableInMCP": false
-  },
-  "versionId": "1696a594-37c7-4495-9f62-37eb739c1e37",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "ca256d69ee81b0bf97b131a8000d4549e9316bae59e41705a9a29299b8f4745e"
-  },
-  "id": "HvzDq0hT1oNLQypo",
-  "tags": []
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-12-31T00:00:00.000Z",
+  "versionId": "1"
 }

@@ -1,0 +1,123 @@
+// Format digest as enhanced HTML email with agent insights
+const digest = $input.first().json;
+const jobs = digest.jobs || [];
+
+let html = `
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; }
+    .agent-badge { background: #fff; color: #667eea; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-top: 10px; font-weight: bold; }
+    .job-card { background: white; border-left: 4px solid #667eea; margin: 20px 0; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .match-score { font-size: 32px; font-weight: bold; color: #667eea; }
+    .high-score { color: #10b981; }
+    .recommendation { display: inline-block; padding: 8px 20px; border-radius: 25px; font-weight: bold; font-size: 14px; }
+    .apply { background: #10b981; color: white; }
+    .skip { background: #ef4444; color: white; }
+    .skills { background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 15px 0; }
+    .skill-tag { background: #667eea; color: white; padding: 4px 12px; border-radius: 15px; display: inline-block; margin: 4px; font-size: 12px; }
+    .gap-tag { background: #f59e0b; color: white; padding: 4px 12px; border-radius: 15px; display: inline-block; margin: 4px; font-size: 12px; }
+    .agent-thinking { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; border-radius: 8px; font-style: italic; }
+    .pros { color: #10b981; }
+    .cons { color: #ef4444; }
+    .btn { background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 15px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 AI Job Agent Report</h1>
+    <p>${digest.summary}</p>
+    <p style="font-size: 14px; margin-top: 10px;">📊 Showing top ${digest.totalMatches} jobs ranked from best to worst match</p>
+    <div class="agent-badge">⚡ Powered by Autonomous AI Agent</div>
+  </div>
+`;
+
+jobs.forEach((job, index) => {
+  const scoreClass = job.matchScore >= 85 ? 'high-score' : '';
+  const recommendation = job.recommendation || 'skip';
+  const recClass = recommendation === 'apply' ? 'apply' : 'skip';
+
+  // Add medal/ranking emoji for top 3
+  let rankBadge = '';
+  if (index === 0) rankBadge = '🥇';
+  else if (index === 1) rankBadge = '🥈';
+  else if (index === 2) rankBadge = '🥉';
+  else rankBadge = `#${index + 1}`;
+
+  html += `
+  <div class="job-card">
+    <h2>${rankBadge} ${job.title || 'No Title'}</h2>
+    <p><strong>🏢 Company:</strong> ${job.company || 'Unknown'} | <strong>📍 Location:</strong> ${job.location || 'Not specified'}</p>
+    <p><strong>💼 Type:</strong> ${job.jobType || 'Not specified'} | <strong>💰 Salary:</strong> ${job.salary || 'Not specified'}</p>
+
+    <p>
+      <span class="match-score ${scoreClass}">${job.matchScore || 0}% Match</span>
+      <span class="recommendation ${recClass}" style="margin-left: 20px;">${recommendation.toUpperCase()}</span>
+    </p>
+
+    ${job.analysis ? `
+    <div class="agent-thinking">
+      <strong>🧠 Agent's Reasoning:</strong> ${job.analysis.reasoning || 'No reasoning provided'}
+    </div>
+
+    ${job.analysis.agentThinking ? `
+    <div class="agent-thinking" style="background: #e0e7ff; border-color: #667eea;">
+      <strong>🤔 Autonomous Decision Process:</strong> ${job.analysis.agentThinking}
+    </div>
+    ` : ''}
+
+    ${job.analysis.skillsMatch && job.analysis.skillsMatch.length > 0 ? `
+    <div class="skills">
+      <strong>✅ Matching Skills:</strong><br>
+      ${job.analysis.skillsMatch.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+    </div>
+    ` : ''}
+
+    ${job.analysis.skillsGap && job.analysis.skillsGap.length > 0 ? `
+    <div class="skills">
+      <strong>📚 Skills to Learn:</strong><br>
+      ${job.analysis.skillsGap.map(skill => `<span class="gap-tag">${skill}</span>`).join('')}
+    </div>
+    ` : ''}
+
+    ${job.analysis.pros && job.analysis.pros.length > 0 ? `
+    <p class="pros"><strong>👍 Pros:</strong></p>
+    <ul class="pros">
+      ${job.analysis.pros.map(pro => `<li>${pro}</li>`).join('')}
+    </ul>
+    ` : ''}
+
+    ${job.analysis.cons && job.analysis.cons.length > 0 ? `
+    <p class="cons"><strong>⚠️ Considerations:</strong></p>
+    <ul class="cons">
+      ${job.analysis.cons.map(con => `<li>${con}</li>`).join('')}
+    </ul>
+    ` : ''}
+
+    ${job.analysis.companyInsight ? `
+    <p><strong>🔍 Company Insight:</strong> ${job.analysis.companyInsight}</p>
+    ` : ''}
+    ` : ''}
+
+    <a href="${job.url || '#'}" class="btn">Apply Now →</a>
+  </div>
+  `;
+});
+
+html += `
+  <div style="text-align: center; padding: 30px; color: #666;">
+    <p>This digest was autonomously generated by your AI Job Search Agent</p>
+    <p style="font-size: 12px;">Powered by GPT-4o with autonomous decision-making</p>
+  </div>
+</body>
+</html>
+`;
+
+return {
+  json: {
+    subject: `🤖 AI Agent: Top 10 Matches (${digest.totalAnalyzed} analyzed) - ${digest.date}`,
+    html: html,
+    text: `AI Agent analyzed ${digest.totalAnalyzed} jobs and found ${digest.totalMatches} top matches. View the HTML email for details.`
+  }
+};

@@ -1,248 +1,137 @@
 # Setup Guide
 
-This guide will help you set up your Job Search AI Agent with n8n.
+## For New Users Cloning This Repository
 
-## Prerequisites
+### Step 1: Get Your API Keys
 
-1. **Node.js** (v18 or higher)
-   ```bash
-   node --version  # Should be 18.0.0 or higher
-   ```
+You'll need to sign up for these services and get API keys:
 
-2. **npm** (comes with Node.js)
-   ```bash
-   npm --version
-   ```
+1. **RapidAPI (JSearch API)**
+   - Go to [https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch)
+   - Sign up for a free account
+   - Subscribe to the JSearch API (free tier available)
+   - Copy your RapidAPI key
 
-3. **Anthropic Claude API Key** or **OpenAI API Key**
-   - Sign up at [Anthropic](https://console.anthropic.com/) or [OpenAI](https://platform.openai.com/)
-   - Generate an API key
+2. **OpenAI API**
+   - Go to [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+   - Sign up or log in
+   - Create a new API key
+   - Copy your OpenAI API key
 
-## Step-by-Step Setup
+3. **Gmail App Password** (for email notifications)
+   - Go to [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+   - Generate a new app password for "Mail"
+   - Copy the 16-character password
 
-### 1. Install n8n
-
-```bash
-# Install n8n globally
-npm install -g n8n
-
-# Or install locally in the project
-npm install
-```
-
-### 2. Configure Environment Variables
+### Step 2: Create Your .env File
 
 ```bash
-# Copy the example env file
+# Copy the example file
 cp .env.example .env
 
-# Edit .env with your credentials
-nano .env  # or use your preferred editor
+# Edit the file and add your keys
+nano .env  # or use any text editor
 ```
 
-Required variables:
-- `ANTHROPIC_API_KEY`: Your Claude API key
-- `SMTP_USER` and `SMTP_PASSWORD`: For email notifications
-- `EMAIL_TO`: Your email address
+Replace the placeholder values with your actual API keys:
 
-### 3. Customize Your Profile
+```env
+RAPIDAPI_KEY=your_actual_rapidapi_key
+OPENAI_API_KEY=your_actual_openai_key
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_gmail_app_password
+```
 
-#### Edit Resume (`config/resume.json`)
-1. Update your personal information
-2. Add your skills and experience
-3. Set your career goals
-4. Define work preferences
-
-#### Edit Search Criteria (`config/search-criteria.json`)
-1. Add job titles you're looking for
-2. Set your preferred locations
-3. Define must-have and nice-to-have skills
-4. Set salary expectations
-5. Add any deal breakers
-
-### 4. Start n8n
+### Step 3: Install n8n
 
 ```bash
-# Start n8n
-n8n start
-
-# Or if installed locally
-npm start
+npm install -g n8n
 ```
 
-n8n will be available at `http://localhost:5678`
+### Step 4: Start n8n with Environment Variables
 
-### 5. Import the Workflow
+```bash
+# Export environment variables and start n8n
+export $(cat .env | xargs) && n8n start
+```
 
-1. Open n8n in your browser: `http://localhost:5678`
-2. Click on **"Workflows"** in the left sidebar
-3. Click **"Import from File"**
-4. Select `workflows/job-search-workflow.json`
-5. The workflow will be imported
+Or, for a more permanent solution, add to your shell profile:
 
-### 6. Configure Credentials in n8n
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+export RAPIDAPI_KEY="your_key"
+export OPENAI_API_KEY="your_key"
+```
 
-#### Anthropic Claude API
-1. In the workflow, click on the "AI Job Analysis" node
-2. Click "Create New Credential"
-3. Enter your Anthropic API key
-4. Save
+### Step 5: Import the Workflow
 
-#### Email (SMTP)
-1. Click on the "Send Email Notification" node
-2. Click "Create New Credential"
-3. Enter your SMTP settings:
-   - **Host**: smtp.gmail.com (for Gmail)
-   - **Port**: 587
-   - **User**: Your email
-   - **Password**: App password (not your regular password)
-4. Save
+1. Open n8n at `http://localhost:5678`
+2. Go to **Workflows** → **Import from File**
+3. Select `workflows/job-search-agent-enhanced.json` (recommended) or `workflows/job-search-workflow.json`
+4. The workflow will import with environment variable references already configured
 
-**Gmail App Password Setup:**
-1. Go to Google Account → Security
-2. Enable 2-Step Verification
-3. Go to App Passwords
-4. Generate a new app password
-5. Use this password in n8n
+### Step 6: Set Up Google Sheets (Optional)
 
-#### Google Sheets (Optional)
-1. Click on the "Save to Google Sheets" node
-2. Follow n8n's OAuth flow to connect your Google account
-3. Create a new spreadsheet or use an existing one
-4. Copy the Sheet ID from the URL
-5. Update the node configuration
+1. In n8n, go to **Credentials** → **Add Credential**
+2. Select **Google Sheets OAuth2 API**
+3. Follow the authentication flow
+4. Create a new Google Sheet for job tracking
+5. Update the Google Sheet ID in the workflow
 
-### 7. Test the Workflow
+### Step 7: Customize Your Profile
 
-1. Click the "Execute Workflow" button in n8n
-2. Watch the workflow run through each node
-3. Check for any errors
-4. Verify you receive an email with job matches
+Edit these nodes in the workflow:
+- **Generate Search URLs**: Update search criteria (keywords, locations)
+- **AI Agent (Autonomous)**: Update your skills, experience, and preferences
 
-### 8. Activate the Workflow
+### Step 8: Test the Workflow
 
-1. Toggle the "Active" switch at the top of the workflow
-2. The workflow will now run automatically every 24 hours
+1. Click **Execute Workflow** to run manually
+2. Check for any errors
+3. Verify email delivery
+4. Check Google Sheets for job tracking
+
+### Step 9: Activate for Daily Runs
+
+1. Toggle the workflow to **Active**
+2. The workflow will run automatically every 24 hours
 
 ## Troubleshooting
 
-### Common Issues
+### Environment Variables Not Working
 
-#### 1. No Jobs Found
-- **Solution**: Make your search criteria less restrictive
-- Check if the job board websites are accessible
-- Verify your keywords are not too specific
+If the workflow can't access environment variables:
 
-#### 2. API Key Errors
-- **Solution**: Verify your API keys are correct in n8n credentials
-- Check if you have sufficient API credits
-- Ensure there are no extra spaces in the API key
+```bash
+# Verify environment variables are set
+echo $RAPIDAPI_KEY
+echo $OPENAI_API_KEY
 
-#### 3. Email Not Sending
-- **Solution**:
-  - For Gmail, use an App Password, not your regular password
-  - Enable "Less secure app access" (not recommended)
-  - Check SMTP settings are correct
-  - Verify port 587 is not blocked by firewall
-
-#### 4. Workflow Execution Errors
-- **Solution**:
-  - Check n8n logs: `~/.n8n/logs/`
-  - Verify all nodes are properly configured
-  - Test each node individually
-  - Check for rate limiting on APIs
-
-#### 5. HTML Parsing Issues
-- **Solution**:
-  - Job board websites frequently change their HTML structure
-  - You may need to update the parsing logic in the "Parse Job Data" node
-  - Consider using official APIs instead of web scraping
-
-### Performance Optimization
-
-1. **Reduce API Calls**:
-   - Limit the number of search queries
-   - Use caching for repeated searches
-   - Increase the schedule interval
-
-2. **Improve Matching Accuracy**:
-   - Refine your AI prompts
-   - Adjust the match score threshold
-   - Add more specific criteria
-
-3. **Handle Rate Limiting**:
-   - Add delays between requests
-   - Use official APIs when available
-   - Batch process jobs
-
-## Advanced Configuration
-
-### Using Alternative Job Sources
-
-#### 1. Add LinkedIn API
-```javascript
-// In the "Generate Search URLs" node
-const linkedInApiUrl = `https://api.linkedin.com/v2/jobSearch?keywords=${keyword}`;
+# Restart n8n with env vars
+export $(cat .env | xargs) && n8n start
 ```
 
-#### 2. Add Indeed API
-```javascript
-const indeedApiUrl = `https://api.indeed.com/ads/apisearch?q=${keyword}&l=${location}`;
-```
+### API Key Errors
 
-### Custom AI Prompts
+- Verify keys are correctly copied (no extra spaces)
+- Check API quotas haven't been exceeded
+- Ensure billing is set up for OpenAI
 
-Edit the AI Job Analysis node prompt to focus on specific criteria:
-- Technical skill matching
-- Company culture fit
-- Career growth opportunities
-- Work-life balance indicators
+### No Jobs Found
 
-### Multiple Notification Channels
+- Check search criteria aren't too restrictive
+- Verify RapidAPI subscription is active
+- Try broader keywords or locations
 
-#### Add Slack Notifications
-1. Create a Slack webhook URL
-2. Add a Slack node after the "Filter High Matches" node
-3. Configure the message format
+## Security Reminders
 
-#### Add Discord Notifications
-1. Create a Discord webhook
-2. Add an HTTP Request node
-3. Send formatted job matches to Discord
+- **NEVER commit your .env file** (it's already in .gitignore)
+- **NEVER share your API keys publicly**
+- **Rotate keys** if accidentally exposed
+- **Monitor API usage** to avoid unexpected charges
 
-### Database Storage
+## Need Help?
 
-Instead of Google Sheets, use a database:
-1. Add a Postgres/MySQL node
-2. Create a jobs table
-3. Store all matched jobs for tracking
-
-## Security Best Practices
-
-1. **Never commit `.env` file** to version control
-2. **Use environment variables** for all sensitive data
-3. **Rotate API keys** regularly
-4. **Use app passwords** for email, not account passwords
-5. **Limit workflow execution** to prevent excessive API usage
-
-## Next Steps
-
-1. Run the workflow daily for a week
-2. Adjust criteria based on results
-3. Fine-tune the AI prompts
-4. Add more job sources
-5. Track your applications
-
-## Getting Help
-
-- n8n Documentation: https://docs.n8n.io/
-- n8n Community: https://community.n8n.io/
-- Anthropic Documentation: https://docs.anthropic.com/
-
-## Tips for Best Results
-
-1. **Start broad**: Begin with less restrictive criteria
-2. **Iterate**: Adjust based on the quality of matches
-3. **Be specific in resume**: The AI uses your resume for matching
-4. **Update regularly**: Keep your resume and criteria current
-5. **Review false positives**: Use them to refine criteria
+- Check the main [README.md](README.md) for detailed documentation
+- Review [AI_AGENT_GUIDE.md](AI_AGENT_GUIDE.md) for agent capabilities
+- Open an issue on GitHub for bugs or questions

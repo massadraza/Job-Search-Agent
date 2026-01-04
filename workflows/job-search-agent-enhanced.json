@@ -1,0 +1,247 @@
+{
+  "name": "Job Search AI Agent (Enhanced)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "scheduler",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Optimized search for internships\nconst searches = [\n  {\n    platform: 'JSearch',\n    keyword: 'software engineering intern summer 2025',\n    location: 'remote',\n    query: 'software engineering intern summer 2025 remote'\n  },\n  {\n    platform: 'JSearch',\n    keyword: 'software engineering intern',\n    location: 'New York',\n    query: 'software engineering intern New York'\n  },\n  {\n    platform: 'JSearch',\n    keyword: 'computer science intern',\n    location: 'United States',\n    query: 'computer science intern United States'\n  }\n];\n\nreturn searches.map(search => ({ json: search }));"
+      },
+      "id": "generate-searches",
+      "name": "Generate Search URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://jsearch.p.rapidapi.com/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.keyword }} {{ $json.location }}"
+            },
+            {
+              "name": "page",
+              "value": "1"
+            },
+            {
+              "name": "num_pages",
+              "value": "2"
+            },
+            {
+              "name": "employment_types",
+              "value": "INTERN"
+            },
+            {
+              "name": "date_posted",
+              "value": "month"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RapidAPI-Key",
+              "value": "{{ $env.RAPIDAPI_KEY }}"
+            },
+            {
+              "name": "X-RapidAPI-Host",
+              "value": "jsearch.p.rapidapi.com"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch-jobs",
+      "name": "Fetch Job Listings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse JSearch API response - Process ALL responses\nconst allJobs = [];\n\n// Get all API responses (3 search queries)\nconst responses = $input.all();\n\n// Extract jobs from each response\nfor (const response of responses) {\n  const jobs = response.json.data || [];\n  \n  // Map each job to our format\n  for (const job of jobs) {\n    allJobs.push({\n      json: {\n        title: job.job_title || 'No title',\n        company: job.employer_name || 'Unknown company',\n        location: job.job_city && job.job_state \n          ? `${job.job_city}, ${job.job_state}` \n          : (job.job_country || 'Remote'),\n        description: job.job_description || 'No description available',\n        url: job.job_apply_link || job.job_google_link || '#',\n        platform: job.job_publisher || 'JSearch',\n        postedDate: job.job_posted_at_datetime_utc || new Date().toISOString(),\n        salary: job.job_min_salary || job.job_max_salary\n          ? `$${job.job_min_salary || '?'} - $${job.job_max_salary || '?'}` \n          : 'Not specified',\n        requiredSkills: job.job_required_skills || [],\n        jobType: job.job_employment_type || 'Not specified',\n        isRemote: job.job_is_remote || false,\n        experienceLevel: job.job_required_experience?.required_experience_in_months \n          ? `${job.job_required_experience.required_experience_in_months} months` \n          : 'Entry level',\n        companyWebsite: job.employer_website || 'Not available',\n        jobId: job.job_id || `${job.employer_name}-${job.job_title}`.replace(/\\s+/g, '-')\n      }\n    });\n  }\n}\n\nreturn allJobs;"
+      },
+      "id": "parse-jobs",
+      "name": "Parse Job Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AI AGENT with Autonomous Decision-Making\n// This agent reasons about tools and makes decisions independently\n\nconst jobData = $input.first().json;\n\n// AGENT SYSTEM PROMPT\nconst systemPrompt = `You are an autonomous job matching AI agent for Massad Raza, a Freshman CS student.\n\nYou think step-by-step and autonomously analyze each job posting:\n1. Extract technical skills from the description\n2. Research the company's reputation (if well-known)\n3. Determine match score based on candidate's skills\n4. Identify skill gaps and learning opportunities\n5. Make a recommendation with clear reasoning\n\nCandidate Profile:\n- Name: Massad Raza\n- Education: Freshman in Computer Science\n- Experience: 0 years (seeking first internship)\n- Skills: JavaScript, Python, TypeScript, Java, SQL, React, Node.js\n- Location: New York, NY (open to remote)\n- Target: Summer 2025 Software Engineering Internships\n\nYou autonomously decide:\n- Is this job relevant for a freshman?\n- What skills match or are missing?\n- Is the company reputable?\n- Should we apply or skip?\n\nBe intelligent and transparent in your decision-making.`;\n\n// AGENT USER PROMPT\nconst userPrompt = `Analyze this job posting autonomously:\n\nJob Title: ${jobData.title}\nCompany: ${jobData.company}\nLocation: ${jobData.location}\nRemote: ${jobData.isRemote}\nJob Type: ${jobData.jobType}\nExperience Level: ${jobData.experienceLevel}\nSalary: ${jobData.salary}\n\nDescription:\n${jobData.description.substring(0, 1500)}...\n\nRequired Skills: ${jobData.requiredSkills ? jobData.requiredSkills.join(', ') : 'Not specified'}\n\nThink autonomously and provide analysis in JSON format:\n{\n  \"matchScore\": 0-100,\n  \"reasoning\": \"Your autonomous reasoning about why this score\",\n  \"skillsMatch\": [\"skills candidate already has\"],\n  \"skillsGap\": [\"skills candidate needs to learn\"],\n  \"pros\": [\"3-4 pros about this opportunity\"],\n  \"cons\": [\"1-2 cons or considerations\"],\n  \"companyInsight\": \"What makes this company good/bad for a freshman intern\",\n  \"recommendation\": \"apply\" or \"skip\",\n  \"agentThinking\": \"Explain your autonomous decision-making process\"\n}`;\n\n// ===== CONFIGURATION: Choose Your OpenAI Model =====\n// Options:\n// - 'gpt-4o' (current): Best reasoning, ~$0.003/job - RECOMMENDED\n// - 'gpt-4o-mini': Fast & cheap, ~$0.001/job - Good for budget\n// - 'o1-mini': Advanced reasoning, ~$0.003/job - Alternative to gpt-4o\n// - 'o1-preview': Deepest reasoning, ~$0.015/job - Overkill for this task\nconst SELECTED_MODEL = 'gpt-4o';\n\n// Call OpenAI API for advanced reasoning\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://api.openai.com/v1/chat/completions',\n  headers: {\n    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,\n    'Content-Type': 'application/json'\n  },\n  body: {\n    model: SELECTED_MODEL,\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userPrompt }\n    ],\n    temperature: 0.7,\n    max_tokens: 1000,\n    response_format: { type: \"json_object\" }\n  }\n});\n\n// Parse agent's autonomous analysis\nconst agentResponse = response.choices[0].message.content.trim();\nconst analysis = JSON.parse(agentResponse);\n\n// Return enriched data with agent's autonomous decisions\nreturn {\n  json: {\n    ...jobData,\n    date: new Date().toLocaleDateString(),\n    matchScore: analysis.matchScore,\n    recommendation: analysis.recommendation,\n    analysis: {\n      matchScore: analysis.matchScore,\n      reasoning: analysis.reasoning,\n      skillsMatch: analysis.skillsMatch || [],\n      skillsGap: analysis.skillsGap || [],\n      pros: analysis.pros,\n      cons: analysis.cons,\n      companyInsight: analysis.companyInsight || 'No additional insights',\n      recommendation: analysis.recommendation,\n      agentThinking: analysis.agentThinking || 'Agent processed autonomously'\n    },\n    isAgentProcessed: true\n  }\n};"
+      },
+      "id": "ai-agent",
+      "name": "AI Agent (Autonomous)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300],
+      "executeOnce": false,
+      "notes": "AI Agent with autonomous decision-making and reasoning"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.matchScore }}",
+              "operation": "largerEqual",
+              "value2": 0
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "filter-matches",
+      "name": "Pass All Jobs",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all matched jobs into a digest\nconst jobs = $input.all().map(item => item.json);\n\n// Sort by match score (best to worst)\njobs.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));\n\n// Limit to top 10 jobs\nconst topJobs = jobs.slice(0, 10);\n\nconst digest = {\n  date: new Date().toLocaleDateString(),\n  totalMatches: topJobs.length,\n  totalAnalyzed: jobs.length,\n  jobs: topJobs,\n  summary: `🤖 AI Agent analyzed ${jobs.length} jobs and ranked the top ${topJobs.length} matches for you!`\n};\n\nreturn { json: digest };"
+      },
+      "id": "create-digest",
+      "name": "Create Job Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format digest as enhanced HTML email with agent insights\nconst digest = $input.first().json;\nconst jobs = digest.jobs || [];\n\nlet html = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; }\n    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; }\n    .agent-badge { background: #fff; color: #667eea; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-top: 10px; font-weight: bold; }\n    .job-card { background: white; border-left: 4px solid #667eea; margin: 20px 0; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }\n    .match-score { font-size: 32px; font-weight: bold; color: #667eea; }\n    .high-score { color: #10b981; }\n    .recommendation { display: inline-block; padding: 8px 20px; border-radius: 25px; font-weight: bold; font-size: 14px; }\n    .apply { background: #10b981; color: white; }\n    .skip { background: #ef4444; color: white; }\n    .skills { background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 15px 0; }\n    .skill-tag { background: #667eea; color: white; padding: 4px 12px; border-radius: 15px; display: inline-block; margin: 4px; font-size: 12px; }\n    .gap-tag { background: #f59e0b; color: white; padding: 4px 12px; border-radius: 15px; display: inline-block; margin: 4px; font-size: 12px; }\n    .agent-thinking { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; border-radius: 8px; font-style: italic; }\n    .pros { color: #10b981; }\n    .cons { color: #ef4444; }\n    .btn { background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 15px; font-weight: bold; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>🤖 AI Job Agent Report</h1>\n    <p>${digest.summary}</p>\n    <p style=\"font-size: 14px; margin-top: 10px;\">📊 Showing top ${digest.totalMatches} jobs ranked from best to worst match</p>\n    <div class=\"agent-badge\">⚡ Powered by Autonomous AI Agent</div>\n  </div>\n`;\n\njobs.forEach((job, index) => {\n  const scoreClass = job.matchScore >= 85 ? 'high-score' : '';\n  const recClass = job.recommendation === 'apply' ? 'apply' : 'skip';\n  \n  // Add medal/ranking emoji for top 3\n  let rankBadge = '';\n  if (index === 0) rankBadge = '🥇';\n  else if (index === 1) rankBadge = '🥈';\n  else if (index === 2) rankBadge = '🥉';\n  else rankBadge = `#${index + 1}`;\n  \n  html += `\n  <div class=\"job-card\">\n    <h2>${rankBadge} ${job.title}</h2>\n    <p><strong>🏢 Company:</strong> ${job.company} | <strong>📍 Location:</strong> ${job.location}</p>\n    <p><strong>💼 Type:</strong> ${job.jobType} | <strong>💰 Salary:</strong> ${job.salary}</p>\n    \n    <p>\n      <span class=\"match-score ${scoreClass}\">${job.matchScore}% Match</span>\n      <span class=\"recommendation ${recClass}\" style=\"margin-left: 20px;\">${job.recommendation.toUpperCase()}</span>\n    </p>\n    \n    ${job.analysis ? `\n    <div class=\"agent-thinking\">\n      <strong>🧠 Agent's Reasoning:</strong> ${job.analysis.reasoning}\n    </div>\n    \n    ${job.analysis.agentThinking ? `\n    <div class=\"agent-thinking\" style=\"background: #e0e7ff; border-color: #667eea;\">\n      <strong>🤔 Autonomous Decision Process:</strong> ${job.analysis.agentThinking}\n    </div>\n    ` : ''}\n    \n    ${job.analysis.skillsMatch && job.analysis.skillsMatch.length > 0 ? `\n    <div class=\"skills\">\n      <strong>✅ Matching Skills:</strong><br>\n      ${job.analysis.skillsMatch.map(skill => `<span class=\"skill-tag\">${skill}</span>`).join('')}\n    </div>\n    ` : ''}\n    \n    ${job.analysis.skillsGap && job.analysis.skillsGap.length > 0 ? `\n    <div class=\"skills\">\n      <strong>📚 Skills to Learn:</strong><br>\n      ${job.analysis.skillsGap.map(skill => `<span class=\"gap-tag\">${skill}</span>`).join('')}\n    </div>\n    ` : ''}\n    \n    ${job.analysis.pros && job.analysis.pros.length > 0 ? `\n    <p class=\"pros\"><strong>👍 Pros:</strong></p>\n    <ul class=\"pros\">\n      ${job.analysis.pros.map(pro => `<li>${pro}</li>`).join('')}\n    </ul>\n    ` : ''}\n    \n    ${job.analysis.cons && job.analysis.cons.length > 0 ? `\n    <p class=\"cons\"><strong>⚠️ Considerations:</strong></p>\n    <ul class=\"cons\">\n      ${job.analysis.cons.map(con => `<li>${con}</li>`).join('')}\n    </ul>\n    ` : ''}\n    \n    ${job.analysis.companyInsight ? `\n    <p><strong>🔍 Company Insight:</strong> ${job.analysis.companyInsight}</p>\n    ` : ''}\n    ` : ''}\n    \n    <a href=\"${job.url}\" class=\"btn\">Apply Now →</a>\n  </div>\n  `;\n});\n\nhtml += `\n  <div style=\"text-align: center; padding: 30px; color: #666;\">\n    <p>This digest was autonomously generated by your AI Job Search Agent</p>\n    <p style=\"font-size: 12px;\">Powered by GPT-4o with autonomous decision-making</p>\n  </div>\n</body>\n</html>\n`;\n\nreturn {\n  json: {\n    subject: `🤖 AI Agent: Top 10 Matches (${digest.totalAnalyzed} analyzed) - ${digest.date}`,\n    html: html,\n    text: `AI Agent found ${digest.totalMatches} job matches autonomously. View the HTML email for details.`\n  }\n};"
+      },
+      "id": "format-email",
+      "name": "Format Email (Enhanced)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "massadraza2007@gmail.com",
+        "toEmail": "massad.raza@outlook.com",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1850, 300],
+      "credentials": {
+        "smtp": {
+          "id": "PyLz96WlNTS6fKg9",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1-tmCYC28MRlpzx6nnCNTMVs58MBF0EHVJ5kg1-ITEjM",
+          "mode": "list",
+          "cachedResultName": "Job Search Agent Spreadsheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-tmCYC28MRlpzx6nnCNTMVs58MBF0EHVJ5kg1-ITEjM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.date }}",
+            "Title": "={{ $json.title }}",
+            "Company": "={{ $json.company }}",
+            "Location": "={{ $json.location }}",
+            "Match Score": "={{ $json.matchScore }}",
+            "Recommendation": "={{ $json.recommendation }}",
+            "URL": "={{ $json.url }}",
+            "Platform": "={{ $json.platform }}",
+            "Agent Reasoning": "={{ $json.analysis.agentThinking }}"
+          },
+          "matchingColumns": ["Title"]
+        },
+        "options": {}
+      },
+      "id": "save-to-sheet",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1450, 450],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "l0z85Zk08R2Ro5hp",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Generate Search URLs", "type": "main", "index": 0 }]]
+    },
+    "Generate Search URLs": {
+      "main": [[{ "node": "Fetch Job Listings", "type": "main", "index": 0 }]]
+    },
+    "Fetch Job Listings": {
+      "main": [[{ "node": "Parse Job Data", "type": "main", "index": 0 }]]
+    },
+    "Parse Job Data": {
+      "main": [[{ "node": "AI Agent (Autonomous)", "type": "main", "index": 0 }]]
+    },
+    "AI Agent (Autonomous)": {
+      "main": [[{ "node": "Pass All Jobs", "type": "main", "index": 0 }]]
+    },
+    "Pass All Jobs": {
+      "main": [
+        [
+          { "node": "Create Job Digest", "type": "main", "index": 0 },
+          { "node": "Save to Google Sheets", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Create Job Digest": {
+      "main": [[{ "node": "Format Email (Enhanced)", "type": "main", "index": 0 }]]
+    },
+    "Format Email (Enhanced)": {
+      "main": [[{ "node": "Send Email Notification", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
